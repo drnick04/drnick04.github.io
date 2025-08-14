@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Conflict Management Styles Quiz</title>
+  <style>
+    :root{--gold:#ffb300;--black:#111;--ink:#222;--bg:#fafafa;--muted:#6b7280;--ring:#e5e7eb}
+    *{box-sizing:border-box}
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;margin:0;background:var(--bg);color:var(--ink)}
+    .wrap{max-width:980px;margin:32px auto;padding:0 16px}
+    header{display:flex;align-items:center;gap:14px;margin-bottom:8px}
+    .logo{width:14px;height:14px;border-radius:3px;background:var(--gold)}
+    h1{font-size:clamp(22px,2.4vw,28px);margin:0;color:var(--black)}
+    .card{background:#fff;border:1px solid var(--ring);border-radius:14px;box-shadow:0 2px 10px rgba(0,0,0,.04);padding:18px;margin:16px 0}
+    .muted{color:var(--muted)}
+    .q{padding:12px 12px;border-radius:10px;border:1px solid var(--ring);margin:10px 0}
+    .q legend{font-weight:600;margin-bottom:8px}
+    .scale{display:grid;grid-template-columns:repeat(4,minmax(60px,1fr));gap:10px;margin-top:8px}
+    .opt{display:flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--ring);border-radius:8px;padding:8px 6px;cursor:pointer;user-select:none}
+    .opt input{accent-color:var(--gold)}
+    .bar{height:8px;background:#f3f4f6;border-radius:999px;overflow:hidden}
+    .bar > span{display:block;height:100%;background:var(--gold)}
+    .actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+    button{border:0;background:var(--black);color:#fff;padding:10px 14px;border-radius:10px;font-weight:600;cursor:pointer}
+    button.secondary{background:#fff;color:var(--black);border:1px solid var(--ring)}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+    .pill{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--ring);padding:6px 10px;border-radius:999px}
+    .pill b{font-weight:700}
+    .result{display:none}
+    .lead{font-size:20px;font-weight:800;margin:0 0 6px;color:var(--black)}
+    .kpi{font-size:32px;font-weight:900}
+    .desc{font-size:14px;line-height:1.35}
+    footer{margin:28px 0;color:var(--muted);font-size:12px}
+    .namefield{width:100%;max-width:360px;padding:10px;border:1px solid var(--ring);border-radius:10px}
+    .req{color:#b91c1c;font-weight:700}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <span class="logo" aria-hidden="true"></span>
+      <h1>Conflict Management Styles — Interactive Quiz</h1>
+    </header>
+
+    <div class="card">
+      <p class="muted">Rate each statement from <b>1</b> (Rarely/Not at all) to <b>4</b> (Almost always). When you’re done, click <b>Get Results</b> to see your dominant style and a breakdown by style.</p>
+      <div style="margin:10px 0 4px">
+        <input id="name" class="namefield" placeholder="(Optional) Your name"/>
+      </div>
+      <div class="pill" style="margin:8px 0 0">
+        <span>Scale:</span>
+        <span>1 = Rarely</span>
+        <span>2 = Sometimes</span>
+        <span>3 = Often</span>
+        <span>4 = Almost always</span>
+      </div>
+    </div>
+
+    <form id="quiz">
+      <!-- Questions -->
+    </form>
+
+    <div class="actions">
+      <button type="button" id="scoreBtn">Get Results</button>
+      <button type="button" class="secondary" id="resetBtn">Reset</button>
+      <button type="button" class="secondary" id="copyBtn">Copy Result</button>
+    </div>
+
+    <!-- Results -->
+    <div id="resultsCard" class="card result" aria-live="polite">
+      <p class="lead">Your Dominant Conflict Style</p>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span id="winnerIcon" style="font-size:28px">🎯</span>
+        <span id="winnerTitle" class="kpi"></span>
+        <span id="winnerNote" class="pill"></span>
+      </div>
+      <p id="winnerDesc" class="desc" style="margin-top:10px"></p>
+
+      <h3 style="margin:18px 0 8px">Breakdown</h3>
+      <div id="breakdown" class="grid"></div>
+    </div>
+
+    <footer>
+      Based on the assertiveness × cooperativeness model of conflict modes. Styles: <b>Collaborating (🦉)</b>, <b>Competing (🦈)</b>, <b>Compromising (🦊)</b>, <b>Accommodating (🧸)</b>, <b>Avoiding (🐢)</b>.
+    </footer>
+  </div>
+
+  <script>
+    const QUESTIONS = [
+      "I discuss issues to find solutions that satisfy everyone.",
+      "I negotiate using a give-and-take approach.",
+      "I meet others’ expectations, even if I compromise my own.",
+      "I present my case clearly and emphasize the benefits of my viewpoint.",
+      "During disagreements, I gather information and keep communication open.",
+      "I remain quiet and leave the situation when arguments arise.",
+      "I consider both my needs and the other person’s needs in conflicts.",
+      "I compromise to resolve issues and move forward.",
+      "I find conflict energizing and enjoy debating.",
+      "Conflicts make me feel uneasy or anxious.",
+      "I try to preserve peace, even if it means not getting what I want.",
+      "I trust my judgment about what needs to be done.",
+      "I meet people halfway to resolve deadlocks.",
+      "I accept not getting my way in exchange for keeping harmony.",
+      "I avoid disagreements by staying silent."
+    ];
+
+    // Style definitions
+    const STYLES = {
+      Collaborating: { icon: "🦉", items: [1,5,7], 
+        desc: "Seek win–win solutions (high assertiveness, high cooperation).", 
+        when: "Use when all parties’ needs matter and relationships are strong." },
+      Competing: { icon: "🦈", items: [4,9,12], 
+        desc: "Stand firm to win (high assertiveness, low cooperation).", 
+        when: "Use for urgent or important issues when quick decisions are needed." },
+      Avoiding: { icon: "🐢", items: [6,10,15], 
+        desc: "Step back or delay (low assertiveness, low cooperation).", 
+        when: "Use for trivial issues or when emotions need cooling off." },
+      Accommodating: { icon: "🧸", items: [3,11,14], 
+        desc: "Put others first (low assertiveness, high cooperation).", 
+        when: "Use when preserving harmony or relationships is a priority." },
+      Compromising: { icon: "🦊", items: [2,8,13], 
+        desc: "Find middle ground (medium assertiveness/cooperation).", 
+        when: "Use when time is limited or both parties must move forward." }
+    };
+
+    // Render questions
+    const form = document.getElementById('quiz');
+    QUESTIONS.forEach((q, i) => {
+      const field = document.createElement('fieldset');
+      field.className = 'q';
+      const lg = document.createElement('legend');
+      lg.textContent = `${i+1}. ${q}`;
+      field.appendChild(lg);
+      const scale = document.createElement('div');
+      scale.className = 'scale';
+      for (let v=1; v<=4; v++){
+        const label = document.createElement('label');
+        label.className = 'opt';
+        label.innerHTML = `<input type="radio" name="q${i+1}" value="${v}" required> ${v}`;
+        scale.appendChild(label);
+      }
+      field.appendChild(scale);
+      form.appendChild(field);
+    });
+
+    function allAnswered(){
+      return QUESTIONS.every((_,i)=> form.querySelector(`input[name=q${i+1}]:checked`));
+    }
+
+    function getScores(){
+      const answers = QUESTIONS.map((_,i)=> Number(form.querySelector(`input[name=q${i+1}]:checked`).value));
+      const scores = {};
+      for (const [name, cfg] of Object.entries(STYLES)){
+        scores[name] = cfg.items.reduce((sum, idx)=> sum + answers[idx-1], 0);
+      }
+      return {answers, scores};
+    }
+
+    function showResults(){
+      if(!allAnswered()){
+        alert('Please answer all questions (choose 1–4 for each).');
+        return;
+      }
+      const {scores} = getScores();
+      // Determine winner (highest score). If tie, show note.
+      const entries = Object.entries(scores);
+      entries.sort((a,b)=> b[1]-a[1]);
+      const topScore = entries[0][1];
+      const winners = entries.filter(([_,s])=> s===topScore).map(([n])=> n);
+      const primary = winners[0];
+
+      const resultsCard = document.getElementById('resultsCard');
+      const wt = document.getElementById('winnerTitle');
+      const wi = document.getElementById('winnerIcon');
+      const wn = document.getElementById('winnerNote');
+      const wd = document.getElementById('winnerDesc');
+
+      wt.textContent = `${STYLES[primary].icon} ${primary}`;
+      wi.textContent = STYLES[primary].icon;
+      if(winners.length>1){
+        wn.textContent = `Tie with: ${winners.slice(1).join(', ')}`;
+        wn.style.display = 'inline-flex';
+      } else {
+        wn.textContent = '';
+        wn.style.display = 'none';
+      }
+      wd.textContent = `${STYLES[primary].desc} ${STYLES[primary].when}`;
+
+      // Breakdown cards
+      const maxPossible = 12; // 3 items × max 4
+      const breakdown = document.getElementById('breakdown');
+      breakdown.innerHTML = '';
+      for (const [name, cfg] of Object.entries(STYLES)){
+        const score = scores[name];
+        const pct = Math.round((score/maxPossible)*100);
+        const box = document.createElement('div');
+        box.className = 'card';
+        box.innerHTML = `
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px">
+            <div class="pill"><span style="font-size:18px">${cfg.icon}</span><b>${name}</b></div>
+            <div><b>${score}</b>/12</div>
+          </div>
+          <div class="bar"><span style="width:${pct}%;"></span></div>
+          <p class="desc" style="margin-top:8px">${cfg.desc} <em>${cfg.when}</em></p>
+        `;
+        breakdown.appendChild(box);
+      }
+
+      resultsCard.style.display = 'block';
+      resultsCard.scrollIntoView({behavior:'smooth',block:'start'});
+    }
+
+    document.getElementById('scoreBtn').addEventListener('click', showResults);
+
+    document.getElementById('resetBtn').addEventListener('click', ()=>{
+      form.reset();
+      document.getElementById('resultsCard').style.display='none';
+    });
+
+    document.getElementById('copyBtn').addEventListener('click', ()=>{
+      if(!allAnswered()){
+        alert('Please answer all questions first.');
+        return;
+      }
+      const {scores} = getScores();
+      const name = document.getElementById('name').value || 'Participant';
+      const lines = [
+        `${name} — Conflict Styles Results`,
+        ...Object.entries(scores).map(([k,v])=>`${k}: ${v}/12`)
+      ];
+      navigator.clipboard.writeText(lines.join('\n'))
+        .then(()=> alert('Results copied to clipboard!'))
+        .catch(()=> alert('Could not copy to clipboard on this device.'));
+    });
+  </script>
+</body>
+</html>
